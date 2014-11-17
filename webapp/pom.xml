@@ -8,7 +8,7 @@
    <groupId>org.openmrs.web</groupId>
    <artifactId>openmrs-webapp</artifactId>
    <packaging>war</packaging>
-   <name>openmrs-webapp</name>
+   <name>openmrs-webapp-branch</name>
    <description>The web application of openmrs</description>
 
    <dependencies>

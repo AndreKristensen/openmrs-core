@@ -35,8 +35,8 @@
 
     <property name="db.changelog.file" value="root.changelog.xml"/>
     <property name="database.url" value="jdbc:mysql://localhost:3306"/>
-    <property name="database.username" value="root"/>
-    <property name="database.password" value="password"/>
+    <property name="database.username" value="doe"/>
+    <property name="database.password" value="andre"/>
     <property name="database.driver" value="com.mysql.jdbc.Driver"/>
     <property name="prompt.user.if.not.local.database" value="true"/>
 	<property name="openmrs.version" value="${openmrs.version.major}.${openmrs.version.minor}.${openmrs.version.maintenance}-${openmrs.version.suffix}"/>

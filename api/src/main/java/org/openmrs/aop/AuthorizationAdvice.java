@@ -14,22 +14,17 @@
 package org.openmrs.aop;
 
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
 
-import org.apache.axiom.om.OMElement;
-import org.apache.axiom.om.util.AXIOMUtil;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.openmrs.LocationAttributeType;
 import org.openmrs.User;
 import org.openmrs.annotation.AuthorizedAnnotationAttributes;
 import org.openmrs.api.APIAuthenticationException;
-import org.openmrs.api.LocationService;
 import org.openmrs.api.context.Context;
+import org.openmrs.xacml.XACMLPEP;
 import org.springframework.aop.MethodBeforeAdvice;
 import org.xacmlinfo.xacml.pep.agent.PEPAgent;
 import org.xacmlinfo.xacml.pep.agent.PEPAgentException;
@@ -47,23 +42,11 @@ public class AuthorizationAdvice implements MethodBeforeAdvice {
 	 */
 	protected final Log log = LogFactory.getLog(AuthorizationAdvice.class);
 
-	PEPAgent pepAgent = null;
-
+	private XACMLPEP pep = null;
+	
 	public AuthorizationAdvice() {
 		try {
-			PEPConfig pepConfig = new PEPConfig();
-			PEPClientConfig clientConfig = new PEPClientConfig();
-			clientConfig.setServerHostName("localhost");
-			clientConfig.setServerPort("9443");
-			clientConfig.setServerUserName("admin");
-			clientConfig.setServerPassword("admin");
-			// URI uri = new URI();
-
-			clientConfig.setTrustStoreFile("C:\\utvikling\\wso2is-5.0.0\\repository\\resources\\security\\client-truststore.jks");
-			clientConfig.setTrustStorePassword("wso2carbon");
-			pepConfig.setPepClientConfig(clientConfig);
-
-			pepAgent = PEPAgent.getInstance(pepConfig);
+			pep = new XACMLPEP("localhost", "9443", "admin", "admin", "C:\\utvikling\\wso2is-5.0.0\\repository\\resources\\security\\client-truststore.jks", "wso2carbon");
 		} catch (PEPAgentException e) {
 			e.printStackTrace();
 		}
@@ -82,13 +65,9 @@ public class AuthorizationAdvice implements MethodBeforeAdvice {
 	@SuppressWarnings({ "unchecked" })
 	public void before(Method method, Object[] args, Object target) throws Throwable {
 		User user = Context.getAuthenticatedUser();
-		String action = null;
-		String userName = null;
-
 		if (log.isDebugEnabled()) {
 			log.debug("Calling authorization advice before " + method.getName());
 		}
-
 		if (log.isDebugEnabled()) {
 			log.debug("User " + user);
 			if (user != null) {
@@ -104,40 +83,16 @@ public class AuthorizationAdvice implements MethodBeforeAdvice {
 		// Iterate through required privileges and return only if the user has
 		// one of them
 		if (!privileges.isEmpty()) {
-			if (pepAgent != null && user != null) {
-				String subjecId = user.getUserId().toString();
-				String resource = "resource";
+			if (user != null) {
+				List<String> results = pep.getDecisonResults(user.getId().toString(), privileges, "resource");
+				log.info(results.toString());
 
-				String decision = pepAgent.getDecision(getMultipleXACMLRequest(subjecId, resource, privileges));
-
-				OMElement omElement = AXIOMUtil.stringToOM(decision);
-				List<String> results = new ArrayList<String>();
-
-				Iterator iterator = omElement.getChildElements();
-				while (iterator.hasNext()) {
-					OMElement element = (OMElement) iterator.next();
-					if ("Result".equals(element.getLocalName())) {
-						String result = element.toString();
-						if (result.contains("Permit")) {
-							results.add("Permit");
-						} else if (result.contains("Deny")) {
-							results.add("Deny");
-						} else if (result.contains("NotApplicable")) {
-							results.add("NotApplicable");
-						} else {
-							// Indeterminate
-							results.add("Indeterminate");
-						}
-					}
-
-				}
-				System.out.println(results.toString());
-
-				if (requireAll && (privileges.size() == 1) && results.contains("Permit")) {
+				if (requireAll && (privileges.size() == 1) && results.contains(XACMLPEP.PERMIT)) {
 					return;
-				}else if (!requireAll && results.contains("Permit")) {
+				}else if (!requireAll && results.contains(XACMLPEP.PERMIT)) {
 					return;
-				} else if (requireAll && !results.contains("Deny") && !results.contains("NotApplicable") && !results.contains("Indeterminate")) {
+				} else if (requireAll && !results.contains(XACMLPEP.DENY) && !results.contains(XACMLPEP.NOT_APPLICABLE) 
+						&& !results.contains(XACMLPEP.INDETERMINATE)) {
 					return;
 				}
 
@@ -154,6 +109,8 @@ public class AuthorizationAdvice implements MethodBeforeAdvice {
 			}
 		}
 	}
+
+	
 
 	/**
 	 * Throws an APIAuthorization exception stating why the user failed

@@ -21,6 +21,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import javax.servlet.jsp.tagext.TagSupport;
+import javax.xml.stream.XMLStreamException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -30,7 +31,9 @@ import org.openmrs.api.context.Context;
 import org.openmrs.api.context.UserContext;
 import org.openmrs.web.WebConstants;
 import org.openmrs.web.user.UserProperties;
+import org.openmrs.xacml.XACMLPEP;
 import org.springframework.util.StringUtils;
+import org.xacmlinfo.xacml.pep.agent.PEPAgentException;
 
 /**
  * Controller for the <openmrs:require> taglib used on jsp pages. This taglib restricts the page
@@ -64,6 +67,17 @@ public class RequireTag extends TagSupport {
 	
 	private boolean errorOccurred;
 	
+	private XACMLPEP pep = null;
+	
+	public RequireTag() {
+		try {
+			pep = new XACMLPEP("localhost", "9443", "admin", "admin", "C:\\utvikling\\wso2is-5.0.0\\repository\\resources\\security\\client-truststore.jks", "wso2carbon");
+		} catch (PEPAgentException e) {
+			e.printStackTrace();
+		}
+    }
+	
+	
 	//these can only be multiple if the anyPrivilege attribute has more than one value
 	private StringBuffer missingPrivilegesBuffer;
 	
@@ -94,6 +108,7 @@ public class RequireTag extends TagSupport {
 		
 		UserContext userContext = Context.getUserContext();
 		
+	
 		if (userContext == null && privilege != null) {
 			log.error("userContext is null. Did this pass through a filter?");
 			//httpSession.removeAttribute(WebConstants.OPENMRS_CONTEXT_HTTPSESSION_ATTR);
@@ -101,11 +116,28 @@ public class RequireTag extends TagSupport {
 			throw new APIException("The context is currently null.  Please try reloading the site.");
 		}
 		
+		User authenticatedUser = userContext.getAuthenticatedUser();
+		
+		
 		// Parse comma-separated list of privileges in allPrivileges and anyPrivileges attributes
+		
+		boolean hasPrivilege = false;
 		String[] allPrivilegesArray = StringUtils.commaDelimitedListToStringArray(allPrivileges);
 		String[] anyPrivilegeArray = StringUtils.commaDelimitedListToStringArray(anyPrivilege);
+		if(authenticatedUser != null){
+			System.out.println("auth : " + authenticatedUser.getUsername());
+			
+			try {
+				hasPrivilege =   hasPrivileges(authenticatedUser.getId().toString(), privilege, allPrivilegesArray, anyPrivilegeArray);
+			} catch (Exception e) {
+	            e.printStackTrace();
+            } 
+			
+		}else{
+			hasPrivilege = hasPrivileges(userContext, privilege, allPrivilegesArray, anyPrivilegeArray);
+		}
 		
-		boolean hasPrivilege = hasPrivileges(userContext, privilege, allPrivilegesArray, anyPrivilegeArray);
+		
 		if (!hasPrivilege) {
 			errorOccurred = true;
 			if (userContext.isAuthenticated()) {
@@ -199,6 +231,8 @@ public class RequireTag extends TagSupport {
 			return false;
 		}
 		
+		System.out.println(requestIpAddr);
+		System.out.println(sessionIpAddr);
 		// IE7 and firefox store "localhost" IP addresses differently.
 		// To accomodate switching from firefox browing to IE taskpane,
 		// we assume these addresses to be equivalent
@@ -246,6 +280,62 @@ public class RequireTag extends TagSupport {
 			return false;
 		}
 		return true;
+	}
+	
+	private boolean hasPrivileges(String subjectId, String privilege, String[] allPrivilegesArray,
+			String[] anyPrivilegeArray) throws NullPointerException, PEPAgentException, XMLStreamException {
+		
+		
+		List<String> arrayList = new ArrayList<String>();
+		for (String s : allPrivilegesArray) {
+			arrayList.add(s);
+        }
+		
+		List<String> arrayList2 = new ArrayList<String>();
+		for (String s : anyPrivilegeArray) {
+			arrayList2.add(s);
+		}
+		
+		  boolean containsAll = true;
+          
+          if(!arrayList.isEmpty()){
+          	List<String> decisonResultsAll = pep.getDecisonResults(subjectId, arrayList, "resource");
+          	for (String string : decisonResultsAll) {
+                  if(!string.equals(XACMLPEP.PERMIT)){
+                  	containsAll = false;
+                  	break;
+                  }
+              }
+          	if(!containsAll){
+          		return false; 
+          	}
+          }
+  
+          boolean containsAny = false;
+          if(containsAll && !arrayList.isEmpty()){
+          	List<String> decisonResultsAny = pep.getDecisonResults(subjectId, arrayList2, "resource");
+          	
+          	for (String string : decisonResultsAny) {
+                  if(string.equals(XACMLPEP.PERMIT)){
+                  	containsAny= true;
+                  	break;
+                  }
+              }
+          	if(!containsAny){
+          		return false;
+          	}
+          }
+          
+          arrayList2.clear();
+          arrayList2.add(privilege);
+          List<String> decisonResults = pep.getDecisonResults(subjectId, arrayList2, "resource");
+          
+          if(!decisonResults.get(0).equals(XACMLPEP.PERMIT)){
+          	addMissingPrivilege(privilege);
+          	return false;
+          }
+          
+          return true;
 	}
 	
 	/**

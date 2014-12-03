@@ -14,19 +14,21 @@
 package org.openmrs.aop;
 
 import java.lang.reflect.Method;
-import java.net.URI;
-import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 
 import org.apache.axiom.om.OMElement;
 import org.apache.axiom.om.util.AXIOMUtil;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.openmrs.LocationAttributeType;
 import org.openmrs.User;
 import org.openmrs.annotation.AuthorizedAnnotationAttributes;
 import org.openmrs.api.APIAuthenticationException;
+import org.openmrs.api.LocationService;
 import org.openmrs.api.context.Context;
 import org.springframework.aop.MethodBeforeAdvice;
 import org.xacmlinfo.xacml.pep.agent.PEPAgent;
@@ -80,7 +82,6 @@ public class AuthorizationAdvice implements MethodBeforeAdvice {
 	@SuppressWarnings({ "unchecked" })
 	public void before(Method method, Object[] args, Object target) throws Throwable {
 		User user = Context.getAuthenticatedUser();
-		
 		String action = null;
 		String userName = null;
 
@@ -103,85 +104,48 @@ public class AuthorizationAdvice implements MethodBeforeAdvice {
 		// Iterate through required privileges and return only if the user has
 		// one of them
 		if (!privileges.isEmpty()) {
-			System.out.println(method.getName());
-			System.out.println(privileges.toString() + " reqiuer all " + requireAll);
-			
-			for (String privilege : privileges) {
+			if (pepAgent != null && user != null) {
+				String subjecId = user.getUserId().toString();
+				String resource = "resource";
 
-				
-				// skip null privileges
-				if (privilege == null || privilege.isEmpty()) {
+				String decision = pepAgent.getDecision(getMultipleXACMLRequest(subjecId, resource, privileges));
+
+				OMElement omElement = AXIOMUtil.stringToOM(decision);
+				List<String> results = new ArrayList<String>();
+
+				Iterator iterator = omElement.getChildElements();
+				while (iterator.hasNext()) {
+					OMElement element = (OMElement) iterator.next();
+					if ("Result".equals(element.getLocalName())) {
+						String result = element.toString();
+						if (result.contains("Permit")) {
+							results.add("Permit");
+						} else if (result.contains("Deny")) {
+							results.add("Deny");
+						} else if (result.contains("NotApplicable")) {
+							results.add("NotApplicable");
+						} else {
+							// Indeterminate
+							results.add("Indeterminate");
+						}
+					}
+
+				}
+				System.out.println(results.toString());
+
+				if (requireAll && (privileges.size() == 1) && results.contains("Permit")) {
+					return;
+				}else if (!requireAll && results.contains("Permit")) {
+					return;
+				} else if (requireAll && !results.contains("Deny") && !results.contains("NotApplicable") && !results.contains("Indeterminate")) {
 					return;
 				}
-				
-				if (pepAgent != null && user != null) {
-					
-					String subjecId = user.getUserId().toString();
-					String resource = "openmrs-patient";
-					String decision = pepAgent.getDecision(
-							"<Request xmlns=\"urn:oasis:names:tc:xacml:3.0:core:schema:wd-17\" CombinedDecision=\"false\" ReturnPolicyIdList=\"false\">" + 
-									"<Attributes Category=\"urn:oasis:names:tc:xacml:3.0:attribute-category:action\">" +
-									"<Attribute AttributeId=\"urn:oasis:names:tc:xacml:1.0:action:action-id\" IncludeInResult=\"true\">" +
-									"<AttributeValue DataType=\"http://www.w3.org/2001/XMLSchema#string\">"+privilege+"</AttributeValue>" + 
-									"</Attribute>" +
-									"</Attributes>" +
-									"<Attributes Category=\"urn:oasis:names:tc:xacml:1.0:subject-category:access-subject\">" + 
-									"<Attribute AttributeId=\"urn:oasis:names:tc:xacml:1.0:subject:subject-id\" IncludeInResult=\"false\">" +
-									"<AttributeValue DataType=\"http://www.w3.org/2001/XMLSchema#string\">"+subjecId+"</AttributeValue>" + 
-									"</Attribute>" + 
-									"</Attributes>" + 
-									"<Attributes Category=\"urn:oasis:names:tc:xacml:3.0:attribute-category:resource\">"+ 
-									"<Attribute AttributeId=\"urn:oasis:names:tc:xacml:1.0:resource:resource-id\" IncludeInResult=\"false\">" + 
-									"<AttributeValue DataType=\"http://www.w3.org/2001/XMLSchema#string\">"+resource+"</AttributeValue>"+ 
-									"</Attribute>" + 
-									"</Attributes>" + 
-									"</Request>");
 
-					  OMElement omElement = AXIOMUtil.stringToOM(decision);
-					  
-					  
-					  Iterator iterator = omElement.getChildElements();
-			            while(iterator.hasNext()){
-			                OMElement element = (OMElement) iterator.next();
-			                if("Result".equals(element.getLocalName())){
-			                    String result = element.toString();
-			                    System.out.println(result);
-//			                    if(result.contains("Permit")){
-//			                    	
-//			                        
-//			                    }
-			                }
-			            }
-			            
-					 System.out.println(decision.contains("Permit"));
-				}
+				throwUnauthorized(user, method, privileges, results.toString());
 
-				if (log.isDebugEnabled()) {
-					log.debug("User has privilege " + privilege + "? " + Context.hasPrivilege(privilege));
-				}
-
-				if (Context.hasPrivilege(privilege)) {
-					if (!requireAll) {
-						// if not all required, the first one that they have
-						// causes them to "pass"
-						return;
-					}
-				} else {
-					if (requireAll) {
-						// if all are required, the first miss causes them
-						// to "fail"
-						throwUnauthorized(user, method, privilege);
-					}
-				}
+			} else {
+				throwUnauthorized(user, method);
 			}
-
-			if (requireAll == false) {
-				// If there's no match, then we know there are privileges and
-				// that the user didn't have any of them. The user is not
-				// authorized to access the method
-				throwUnauthorized(user, method, privileges);
-			}
-
 		} else if (attributes.hasAuthorizedAnnotation(method)) {
 			// if there are no privileges defined, just require that
 			// the user be authenticated
@@ -201,11 +165,18 @@ public class AuthorizationAdvice implements MethodBeforeAdvice {
 	 * @param attrs
 	 *            Collection of String privilege names that the user must have
 	 */
+	private void throwUnauthorized(User user, Method method, Collection<String> attrs, String XACMLRespons) {
+		if (log.isDebugEnabled()) {
+			log.debug("User " + user + " is not authorized to access " + method.getName());
+		}
+		throw new APIAuthenticationException(Context.getMessageSourceService().getMessage("error.privilegesRequired", new Object[] { StringUtils.join(attrs, ",") }, null).toString() + " XACML respons: " + XACMLRespons);
+	}
+
 	private void throwUnauthorized(User user, Method method, Collection<String> attrs) {
 		if (log.isDebugEnabled()) {
 			log.debug("User " + user + " is not authorized to access " + method.getName());
 		}
-		throw new APIAuthenticationException(Context.getMessageSourceService().getMessage("error.privilegesRequired", new Object[] { StringUtils.join(attrs, ",") }, null));
+		throw new APIAuthenticationException(Context.getMessageSourceService().getMessage("error.privilegesRequired", new Object[] { StringUtils.join(attrs, ",") }, null).toString());
 	}
 
 	/**
@@ -238,5 +209,20 @@ public class AuthorizationAdvice implements MethodBeforeAdvice {
 			log.debug("User " + user + " is not authorized to access " + method.getName());
 		}
 		throw new APIAuthenticationException(Context.getMessageSourceService().getMessage("error.aunthenticationRequired"));
+	}
+
+	public static String getMultipleXACMLRequest(String subject, String resource, Collection<String> privileges) {
+
+		String request = "<Request xmlns=\"urn:oasis:names:tc:xacml:3.0:core:schema:wd-17\" ReturnPolicyIdList=\"false\" CombinedDecision=\"false\">\n" + "<Attributes Category=\"urn:oasis:names:tc:xacml:1.0:subject-category:access-subject\" >\n" + "<Attribute IncludeInResult=\"false\" AttributeId=\"urn:oasis:names:tc:xacml:1.0:subject:subject-id\">\n" + "<AttributeValue DataType=\"http://www.w3.org/2001/XMLSchema#string\">" + subject + "</AttributeValue>\n" + "</Attribute>\n" + "</Attributes>\n" + "<Attributes Category=\"urn:oasis:names:tc:xacml:3.0:attribute-category:resource\">\n" + "<Attribute AttributeId=\"urn:oasis:names:tc:xacml:1.0:resource:resource-id\" IncludeInResult=\"false\">\n" + "<AttributeValue DataType=\"http://www.w3.org/2001/XMLSchema#string\">" + resource + "</AttributeValue>\n" + "</Attribute>\n" + "</Attributes>\n";
+
+		if (privileges != null) {
+			for (String action : privileges) {
+				request = request + "<Attributes Category=\"urn:oasis:names:tc:xacml:3.0:attribute-category:action\">\n" + "<Attribute IncludeInResult=\"true\" AttributeId=\"urn:oasis:names:tc:xacml:1.0:action:action-id\">\n" + "<AttributeValue DataType=\"http://www.w3.org/2001/XMLSchema#string\">" + action + "</AttributeValue>\n" + "</Attribute>\n" + "</Attributes>\n";
+			}
+		}
+		request = request + "</Request> ";
+
+		return request;
+
 	}
 }

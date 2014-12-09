@@ -220,39 +220,9 @@
 			<type>jar</type>
 		</dependency>
 		<dependency>
-			<groupId>org.wso2.carbon</groupId>
-			<artifactId>org.wso2.carbon.identity.entitlement.stub</artifactId>
-			<version>4.2.0</version>
-		</dependency>
-		<dependency>
-			<groupId>org.wso2.carbon</groupId>
-			<artifactId>org.wso2.carbon.authenticator.stub</artifactId>
-			<version>4.2.0</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.ws.commons.axiom.wso2</groupId>
-			<artifactId>axiom</artifactId>
-			<version>1.2.11.wso2v1</version>
-		</dependency>
-		<dependency>
-			<groupId>org.wso2.balana</groupId>
-			<artifactId>org.wso2.balana.utils</artifactId>
-			<version>1.0.0-wso2v7</version>
-		</dependency>
-		<dependency>
-			<groupId>commons-httpclient.wso2</groupId>
-			<artifactId>commons-httpclient</artifactId>
-			<version>3.1.0.wso2v1</version>
-		</dependency>
-		<dependency>
-			<groupId>org.wso2.securevault</groupId>
-			<artifactId>org.wso2.securevault</artifactId>
-			<version>1.0.0</version>
-		</dependency>
-		<dependency>
-			<groupId>org.xacmlinfo</groupId>
-			<artifactId>org.xacmlinfo.xacml.pep.agent</artifactId>
-			<version>1.0.0</version>
+			<groupId>no.ask</groupId>
+			<artifactId>xacml-util</artifactId>
+			<version>1.0.0-SNAPSHOT</version>
 		</dependency>
 	</dependencies>
 	<build>

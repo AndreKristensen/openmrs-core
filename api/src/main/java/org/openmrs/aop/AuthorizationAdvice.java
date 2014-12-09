@@ -17,6 +17,8 @@ import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.List;
 
+import no.ask.xacml.util.XACMLCommunication;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -24,34 +26,32 @@ import org.openmrs.User;
 import org.openmrs.annotation.AuthorizedAnnotationAttributes;
 import org.openmrs.api.APIAuthenticationException;
 import org.openmrs.api.context.Context;
-import org.openmrs.xacml.XACMLPEP;
 import org.springframework.aop.MethodBeforeAdvice;
-import org.xacmlinfo.xacml.pep.agent.PEPAgent;
 import org.xacmlinfo.xacml.pep.agent.PEPAgentException;
-import org.xacmlinfo.xacml.pep.agent.PEPConfig;
-import org.xacmlinfo.xacml.pep.agent.client.PEPClientConfig;
 
 /**
  * This class provides the authorization AOP advice performed before every
  * service layer method call.
  */
 public class AuthorizationAdvice implements MethodBeforeAdvice {
-
+	
 	/**
 	 * Logger for this class and subclasses
 	 */
 	protected final Log log = LogFactory.getLog(AuthorizationAdvice.class);
-
-	private XACMLPEP pep = null;
+	
+	private XACMLCommunication pep = null;
 	
 	public AuthorizationAdvice() {
 		try {
-			pep = new XACMLPEP("localhost", "9443", "admin", "admin", "C:\\utvikling\\wso2is-5.0.0\\repository\\resources\\security\\client-truststore.jks", "wso2carbon");
-		} catch (PEPAgentException e) {
+			pep = new XACMLCommunication("localhost", "9443", "admin", "admin",
+			        "C:\\utvikling\\wso2is-5.0.0\\repository\\resources\\security\\client-truststore.jks", "wso2carbon");
+		}
+		catch (PEPAgentException e) {
 			e.printStackTrace();
 		}
 	}
-
+	
 	/**
 	 * Allows us to check whether a user is authorized to access a particular
 	 * method.
@@ -62,7 +62,7 @@ public class AuthorizationAdvice implements MethodBeforeAdvice {
 	 * @throws Throwable
 	 * @should notify listeners about checked privileges
 	 */
-	@SuppressWarnings({ "unchecked" })
+	@SuppressWarnings( { "unchecked" })
 	public void before(Method method, Object[] args, Object target) throws Throwable {
 		User user = Context.getAuthenticatedUser();
 		if (log.isDebugEnabled()) {
@@ -74,30 +74,31 @@ public class AuthorizationAdvice implements MethodBeforeAdvice {
 				log.debug("has roles " + user.getAllRoles());
 			}
 		}
-
+		
 		AuthorizedAnnotationAttributes attributes = new AuthorizedAnnotationAttributes();
 		Collection<String> privileges = attributes.getAttributes(method);
 		boolean requireAll = attributes.getRequireAll(method);
-
+		
 		// Only execute if the "secure" method has authorization attributes
 		// Iterate through required privileges and return only if the user has
 		// one of them
 		if (!privileges.isEmpty()) {
 			if (user != null) {
-				List<String> results = pep.getDecisonResults(user.getId().toString(), privileges, "resource");
+				List<String> results = pep.getDecisonResults(user.getId().toString(), privileges, "openmrs.com", null);
 				log.info(results.toString());
-
-				if (requireAll && (privileges.size() == 1) && results.contains(XACMLPEP.PERMIT)) {
+				
+				if (requireAll && (privileges.size() == 1) && results.contains(XACMLCommunication.RESULT_PERMIT)) {
 					return;
-				}else if (!requireAll && results.contains(XACMLPEP.PERMIT)) {
+				} else if (!requireAll && results.contains(XACMLCommunication.RESULT_PERMIT)) {
 					return;
-				} else if (requireAll && !results.contains(XACMLPEP.DENY) && !results.contains(XACMLPEP.NOT_APPLICABLE) 
-						&& !results.contains(XACMLPEP.INDETERMINATE)) {
+				} else if (requireAll && !results.contains(XACMLCommunication.RESULT_DENY)
+				        && !results.contains(XACMLCommunication.RESULT_NOT_APPLICABLE)
+				        && !results.contains(XACMLCommunication.RESULT_INDETERMINATE)) {
 					return;
 				}
-
+				
 				throwUnauthorized(user, method, privileges, results.toString());
-
+				
 			} else {
 				throwUnauthorized(user, method);
 			}
@@ -109,9 +110,7 @@ public class AuthorizationAdvice implements MethodBeforeAdvice {
 			}
 		}
 	}
-
 	
-
 	/**
 	 * Throws an APIAuthorization exception stating why the user failed
 	 *
@@ -126,16 +125,19 @@ public class AuthorizationAdvice implements MethodBeforeAdvice {
 		if (log.isDebugEnabled()) {
 			log.debug("User " + user + " is not authorized to access " + method.getName());
 		}
-		throw new APIAuthenticationException(Context.getMessageSourceService().getMessage("error.privilegesRequired", new Object[] { StringUtils.join(attrs, ",") }, null).toString() + " XACML respons: " + XACMLRespons);
+		throw new APIAuthenticationException(Context.getMessageSourceService().getMessage("error.privilegesRequired",
+		    new Object[] { StringUtils.join(attrs, ",") }, null).toString()
+		        + " XACML respons: " + XACMLRespons);
 	}
-
+	
 	private void throwUnauthorized(User user, Method method, Collection<String> attrs) {
 		if (log.isDebugEnabled()) {
 			log.debug("User " + user + " is not authorized to access " + method.getName());
 		}
-		throw new APIAuthenticationException(Context.getMessageSourceService().getMessage("error.privilegesRequired", new Object[] { StringUtils.join(attrs, ",") }, null).toString());
+		throw new APIAuthenticationException(Context.getMessageSourceService().getMessage("error.privilegesRequired",
+		    new Object[] { StringUtils.join(attrs, ",") }, null).toString());
 	}
-
+	
 	/**
 	 * Throws an APIAuthorization exception stating why the user failed
 	 *
@@ -150,9 +152,10 @@ public class AuthorizationAdvice implements MethodBeforeAdvice {
 		if (log.isDebugEnabled()) {
 			log.debug("User " + user + " is not authorized to access " + method.getName());
 		}
-		throw new APIAuthenticationException(Context.getMessageSourceService().getMessage("error.privilegesRequired", new Object[] { attr }, null));
+		throw new APIAuthenticationException(Context.getMessageSourceService().getMessage("error.privilegesRequired",
+		    new Object[] { attr }, null));
 	}
-
+	
 	/**
 	 * Throws an APIAuthorization exception stating why the user failed
 	 *
@@ -166,20 +169,5 @@ public class AuthorizationAdvice implements MethodBeforeAdvice {
 			log.debug("User " + user + " is not authorized to access " + method.getName());
 		}
 		throw new APIAuthenticationException(Context.getMessageSourceService().getMessage("error.aunthenticationRequired"));
-	}
-
-	public static String getMultipleXACMLRequest(String subject, String resource, Collection<String> privileges) {
-
-		String request = "<Request xmlns=\"urn:oasis:names:tc:xacml:3.0:core:schema:wd-17\" ReturnPolicyIdList=\"false\" CombinedDecision=\"false\">\n" + "<Attributes Category=\"urn:oasis:names:tc:xacml:1.0:subject-category:access-subject\" >\n" + "<Attribute IncludeInResult=\"false\" AttributeId=\"urn:oasis:names:tc:xacml:1.0:subject:subject-id\">\n" + "<AttributeValue DataType=\"http://www.w3.org/2001/XMLSchema#string\">" + subject + "</AttributeValue>\n" + "</Attribute>\n" + "</Attributes>\n" + "<Attributes Category=\"urn:oasis:names:tc:xacml:3.0:attribute-category:resource\">\n" + "<Attribute AttributeId=\"urn:oasis:names:tc:xacml:1.0:resource:resource-id\" IncludeInResult=\"false\">\n" + "<AttributeValue DataType=\"http://www.w3.org/2001/XMLSchema#string\">" + resource + "</AttributeValue>\n" + "</Attribute>\n" + "</Attributes>\n";
-
-		if (privileges != null) {
-			for (String action : privileges) {
-				request = request + "<Attributes Category=\"urn:oasis:names:tc:xacml:3.0:attribute-category:action\">\n" + "<Attribute IncludeInResult=\"true\" AttributeId=\"urn:oasis:names:tc:xacml:1.0:action:action-id\">\n" + "<AttributeValue DataType=\"http://www.w3.org/2001/XMLSchema#string\">" + action + "</AttributeValue>\n" + "</Attribute>\n" + "</Attributes>\n";
-			}
-		}
-		request = request + "</Request> ";
-
-		return request;
-
 	}
 }

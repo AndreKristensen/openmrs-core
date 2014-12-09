@@ -9,6 +9,7 @@ import static org.hamcrest.Matchers.empty;
 import static org.junit.Assert.assertThat;
 
 import java.util.LinkedHashSet;
+
 //import java.util.Set;
 //
 //import javax.annotation.Resource;
@@ -26,61 +27,61 @@ import java.util.LinkedHashSet;
 /**
  * Tests {@link AuthorizationAdvice}.
  */
-public class AuthorizationAdviceTest 
+public class AuthorizationAdviceTest
 //extends BaseModuleContextSensitiveTest
 {
-//	
-//	@Resource(name = "listener1")
-//	Listener1 listener1;
-//	
-//	@Resource(name = "listener2")
-//	Listener2 listener2;
-//	
-//	@Test
-//	@Verifies(value = "notify listeners about checked privileges", method = "before(Method, Object[], Object)")
-//	public void before_shouldNotifyListenersAboutCheckedPrivileges() {
-//		listener1.hasPrivileges.clear();
-//		listener1.lacksPrivileges.clear();
-//		
-//		listener2.hasPrivileges.clear();
-//		listener2.lacksPrivileges.clear();
-//		
-//		Concept concept = Context.getConceptService().getConcept(3);
-//		
-//		assertThat("listener1", listener1.hasPrivileges, containsInAnyOrder("Get Concepts"));
-//		assertThat("listener2", listener2.hasPrivileges, containsInAnyOrder("Get Concepts"));
-//		assertThat(listener1.lacksPrivileges, empty());
-//		assertThat(listener2.lacksPrivileges, empty());
-//		
-//		listener1.hasPrivileges.clear();
-//		listener2.hasPrivileges.clear();
-//		
-//		Context.getConceptService().saveConcept(concept);
-//		
-//		assertThat("listener1", listener1.hasPrivileges, containsInAnyOrder("Manage Concepts", "Get Observations"));
-//		assertThat("listener2", listener2.hasPrivileges, containsInAnyOrder("Manage Concepts", "Get Observations"));
-//		assertThat(listener1.lacksPrivileges, empty());
-//		assertThat(listener2.lacksPrivileges, empty());
-//	}
-//	
-//	@Component("listener1")
-//	public static class Listener1 implements PrivilegeListener {
-//		
-//		//We need to preserve order due to the semantics of Assert.assertArrayEquals
-//		public Set<String> hasPrivileges = new LinkedHashSet<String>();
-//		
-//		public Set<String> lacksPrivileges = new LinkedHashSet<String>();
-//		
-//		@Override
-//		public void privilegeChecked(User user, String privilege, boolean hasPrivilege) {
-//			if (hasPrivilege) {
-//				hasPrivileges.add(privilege);
-//			} else {
-//				lacksPrivileges.add(privilege);
-//			}
-//		}
-//	}
-//	
-//	@Component("listener2")
-//	public static class Listener2 extends Listener1 {}
+	//	
+	//	@Resource(name = "listener1")
+	//	Listener1 listener1;
+	//	
+	//	@Resource(name = "listener2")
+	//	Listener2 listener2;
+	//	
+	//	@Test
+	//	@Verifies(value = "notify listeners about checked privileges", method = "before(Method, Object[], Object)")
+	//	public void before_shouldNotifyListenersAboutCheckedPrivileges() {
+	//		listener1.hasPrivileges.clear();
+	//		listener1.lacksPrivileges.clear();
+	//		
+	//		listener2.hasPrivileges.clear();
+	//		listener2.lacksPrivileges.clear();
+	//		
+	//		Concept concept = Context.getConceptService().getConcept(3);
+	//		
+	//		assertThat("listener1", listener1.hasPrivileges, containsInAnyOrder("Get Concepts"));
+	//		assertThat("listener2", listener2.hasPrivileges, containsInAnyOrder("Get Concepts"));
+	//		assertThat(listener1.lacksPrivileges, empty());
+	//		assertThat(listener2.lacksPrivileges, empty());
+	//		
+	//		listener1.hasPrivileges.clear();
+	//		listener2.hasPrivileges.clear();
+	//		
+	//		Context.getConceptService().saveConcept(concept);
+	//		
+	//		assertThat("listener1", listener1.hasPrivileges, containsInAnyOrder("Manage Concepts", "Get Observations"));
+	//		assertThat("listener2", listener2.hasPrivileges, containsInAnyOrder("Manage Concepts", "Get Observations"));
+	//		assertThat(listener1.lacksPrivileges, empty());
+	//		assertThat(listener2.lacksPrivileges, empty());
+	//	}
+	//	
+	//	@Component("listener1")
+	//	public static class Listener1 implements PrivilegeListener {
+	//		
+	//		//We need to preserve order due to the semantics of Assert.assertArrayEquals
+	//		public Set<String> hasPrivileges = new LinkedHashSet<String>();
+	//		
+	//		public Set<String> lacksPrivileges = new LinkedHashSet<String>();
+	//		
+	//		@Override
+	//		public void privilegeChecked(User user, String privilege, boolean hasPrivilege) {
+	//			if (hasPrivilege) {
+	//				hasPrivileges.add(privilege);
+	//			} else {
+	//				lacksPrivileges.add(privilege);
+	//			}
+	//		}
+	//	}
+	//	
+	//	@Component("listener2")
+	//	public static class Listener2 extends Listener1 {}
 }

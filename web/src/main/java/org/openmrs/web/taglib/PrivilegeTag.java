@@ -25,8 +25,9 @@ import org.apache.commons.logging.LogFactory;
 import org.openmrs.User;
 import org.openmrs.api.context.Context;
 import org.openmrs.api.context.UserContext;
-import org.openmrs.xacml.XACMLPEP;
 import org.xacmlinfo.xacml.pep.agent.PEPAgentException;
+
+import no.ask.xacml.util.XACMLCommunication;
 
 public class PrivilegeTag extends TagSupport {
 	
@@ -38,11 +39,11 @@ public class PrivilegeTag extends TagSupport {
 	
 	private String inverse;
 
-	private XACMLPEP pep = null;
+	private XACMLCommunication pep = null;
 	
 	public PrivilegeTag() {
 		try {
-			pep = new XACMLPEP("localhost", "9443", "admin", "admin", "C:\\utvikling\\wso2is-5.0.0\\repository\\resources\\security\\client-truststore.jks", "wso2carbon");
+			pep = new XACMLCommunication("localhost", "9443", "admin", "admin", "C:\\utvikling\\wso2is-5.0.0\\repository\\resources\\security\\client-truststore.jks", "wso2carbon");
 		} catch (PEPAgentException e) {
 			e.printStackTrace();
 		}
@@ -79,7 +80,7 @@ public class PrivilegeTag extends TagSupport {
 				// allow inversing
 				
 				System.out.println(privileges);
-				List<String> decisonResults = pep.getDecisonResults(authenticatedUser.getId().toString(), privileges , "resource");
+				List<String> decisonResults = pep.getDecisonResults(authenticatedUser.getId().toString(), privileges , "openmrs.com",null);
 				System.out.println(decisonResults.toString());
 				
 				
@@ -88,8 +89,8 @@ public class PrivilegeTag extends TagSupport {
 					isInverted = "true".equals(inverse.toLowerCase());
 				}
 				
-				boolean b = decisonResults.get(0).equals(XACMLPEP.PERMIT) && !isInverted;
-				boolean c = decisonResults.get(0).equals(XACMLPEP.DENY) && isInverted;
+				boolean b = decisonResults.get(0).equals(XACMLCommunication.RESULT_PERMIT) && !isInverted;
+				boolean c = decisonResults.get(0).equals(XACMLCommunication.RESULT_DENY) && isInverted;
 				if (b || c) {
 					pageContext.setAttribute("authenticatedUser", userContext.getAuthenticatedUser());
 					return EVAL_BODY_INCLUDE;

@@ -31,7 +31,7 @@ import org.openmrs.api.context.Context;
 import org.openmrs.api.context.UserContext;
 import org.openmrs.web.WebConstants;
 import org.openmrs.web.user.UserProperties;
-import org.openmrs.xacml.XACMLPEP;
+import no.ask.xacml.util.XACMLCommunication;
 import org.springframework.util.StringUtils;
 import org.xacmlinfo.xacml.pep.agent.PEPAgentException;
 
@@ -67,11 +67,11 @@ public class RequireTag extends TagSupport {
 	
 	private boolean errorOccurred;
 	
-	private XACMLPEP pep = null;
+	private XACMLCommunication pep = null;
 	
 	public RequireTag() {
 		try {
-			pep = new XACMLPEP("localhost", "9443", "admin", "admin", "C:\\utvikling\\wso2is-5.0.0\\repository\\resources\\security\\client-truststore.jks", "wso2carbon");
+			pep = new XACMLCommunication("localhost", "9443", "admin", "admin", "C:\\utvikling\\wso2is-5.0.0\\repository\\resources\\security\\client-truststore.jks", "wso2carbon");
 		} catch (PEPAgentException e) {
 			e.printStackTrace();
 		}
@@ -299,9 +299,9 @@ public class RequireTag extends TagSupport {
 		  boolean containsAll = true;
           
           if(!arrayList.isEmpty()){
-          	List<String> decisonResultsAll = pep.getDecisonResults(subjectId, arrayList, "resource");
+          	List<String> decisonResultsAll = pep.getDecisonResults(subjectId, arrayList, "openmrs.com",null);
           	for (String string : decisonResultsAll) {
-                  if(!string.equals(XACMLPEP.PERMIT)){
+                  if(!string.equals(XACMLCommunication.RESULT_PERMIT)){
                   	containsAll = false;
                   	break;
                   }
@@ -313,10 +313,10 @@ public class RequireTag extends TagSupport {
   
           boolean containsAny = false;
           if(containsAll && !arrayList.isEmpty()){
-          	List<String> decisonResultsAny = pep.getDecisonResults(subjectId, arrayList2, "resource");
+          	List<String> decisonResultsAny = pep.getDecisonResults(subjectId, arrayList2, "openmrs.com",null);
           	
           	for (String string : decisonResultsAny) {
-                  if(string.equals(XACMLPEP.PERMIT)){
+                  if(string.equals(XACMLCommunication.RESULT_PERMIT)){
                   	containsAny= true;
                   	break;
                   }
@@ -328,9 +328,9 @@ public class RequireTag extends TagSupport {
           
           arrayList2.clear();
           arrayList2.add(privilege);
-          List<String> decisonResults = pep.getDecisonResults(subjectId, arrayList2, "resource");
+          List<String> decisonResults = pep.getDecisonResults(subjectId, arrayList2, "openmrs.com",null);
           
-          if(!decisonResults.get(0).equals(XACMLPEP.PERMIT)){
+          if(!decisonResults.get(0).equals(XACMLCommunication.RESULT_PERMIT)){
           	addMissingPrivilege(privilege);
           	return false;
           }

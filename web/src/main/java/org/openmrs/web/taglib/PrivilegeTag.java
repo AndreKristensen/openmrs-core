@@ -38,22 +38,23 @@ public class PrivilegeTag extends TagSupport {
 	private String privilege;
 	
 	private String inverse;
-
+	
 	private XACMLCommunication pep = null;
 	
 	public PrivilegeTag() {
 		try {
-			pep = new XACMLCommunication("localhost", "9443", "admin", "admin", "C:\\utvikling\\wso2is-5.0.0\\repository\\resources\\security\\client-truststore.jks", "wso2carbon");
-		} catch (PEPAgentException e) {
+			pep = new XACMLCommunication("localhost", "9443", "admin", "admin",
+			        "C:\\utvikling\\wso2is-5.0.0\\repository\\resources\\security\\client-truststore.jks", "wso2carbon");
+		}
+		catch (PEPAgentException e) {
 			e.printStackTrace();
 		}
-    }
+	}
 	
 	public int doStartTag() {
 		
-//		User user = Context.getAuthenticatedUser();
+		//		User user = Context.getAuthenticatedUser();
 		UserContext userContext = Context.getUserContext();
-		
 		
 		log.debug("Checking user " + userContext.getAuthenticatedUser() + " for privs " + privilege);
 		
@@ -76,13 +77,13 @@ public class PrivilegeTag extends TagSupport {
 		User authenticatedUser = userContext.getAuthenticatedUser();
 		
 		try {
-			if(authenticatedUser != null){
+			if (authenticatedUser != null) {
 				// allow inversing
 				
 				System.out.println(privileges);
-				List<String> decisonResults = pep.getDecisonResults(authenticatedUser.getId().toString(), privileges , "openmrs.com",null);
+				List<String> decisonResults = pep.getDecisonResults(authenticatedUser.getId().toString(), privileges,
+				    "openmrs.com", null);
 				System.out.println(decisonResults.toString());
-				
 				
 				boolean isInverted = false;
 				if (inverse != null) {
@@ -97,18 +98,21 @@ public class PrivilegeTag extends TagSupport {
 				} else {
 					return SKIP_BODY;
 				}
-			
+				
 			}
-        } catch (NullPointerException e) {
-	        // TODO Auto-generated catch block
-	        e.printStackTrace();
-        } catch (PEPAgentException e) {
-	        // TODO Auto-generated catch block
-	        e.printStackTrace();
-        } catch (XMLStreamException e) {
-	        // TODO Auto-generated catch block
-	        e.printStackTrace();
-        }
+		}
+		catch (NullPointerException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		catch (PEPAgentException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		catch (XMLStreamException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
 		// allow inversing
 		boolean isInverted = false;

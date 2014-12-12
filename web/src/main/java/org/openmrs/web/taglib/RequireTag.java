@@ -23,6 +23,8 @@ import javax.servlet.http.HttpSession;
 import javax.servlet.jsp.tagext.TagSupport;
 import javax.xml.stream.XMLStreamException;
 
+import no.ask.xacml.util.XACMLCommunication;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openmrs.User;
@@ -31,7 +33,6 @@ import org.openmrs.api.context.Context;
 import org.openmrs.api.context.UserContext;
 import org.openmrs.web.WebConstants;
 import org.openmrs.web.user.UserProperties;
-import no.ask.xacml.util.XACMLCommunication;
 import org.springframework.util.StringUtils;
 import org.xacmlinfo.xacml.pep.agent.PEPAgentException;
 
@@ -71,12 +72,13 @@ public class RequireTag extends TagSupport {
 	
 	public RequireTag() {
 		try {
-			pep = new XACMLCommunication("localhost", "9443", "admin", "admin", "C:\\utvikling\\wso2is-5.0.0\\repository\\resources\\security\\client-truststore.jks", "wso2carbon");
-		} catch (PEPAgentException e) {
+			pep = new XACMLCommunication("localhost", "9443", "admin", "admin",
+			        "C:\\utvikling\\wso2is-5.0.0\\repository\\resources\\security\\client-truststore.jks", "wso2carbon");
+		}
+		catch (PEPAgentException e) {
 			e.printStackTrace();
 		}
-    }
-	
+	}
 	
 	//these can only be multiple if the anyPrivilege attribute has more than one value
 	private StringBuffer missingPrivilegesBuffer;
@@ -108,7 +110,6 @@ public class RequireTag extends TagSupport {
 		
 		UserContext userContext = Context.getUserContext();
 		
-	
 		if (userContext == null && privilege != null) {
 			log.error("userContext is null. Did this pass through a filter?");
 			//httpSession.removeAttribute(WebConstants.OPENMRS_CONTEXT_HTTPSESSION_ATTR);
@@ -118,25 +119,25 @@ public class RequireTag extends TagSupport {
 		
 		User authenticatedUser = userContext.getAuthenticatedUser();
 		
-		
 		// Parse comma-separated list of privileges in allPrivileges and anyPrivileges attributes
 		
 		boolean hasPrivilege = false;
 		String[] allPrivilegesArray = StringUtils.commaDelimitedListToStringArray(allPrivileges);
 		String[] anyPrivilegeArray = StringUtils.commaDelimitedListToStringArray(anyPrivilege);
-		if(authenticatedUser != null){
+		if (authenticatedUser != null) {
 			System.out.println("auth : " + authenticatedUser.getUsername());
 			
 			try {
-				hasPrivilege =   hasPrivileges(authenticatedUser.getId().toString(), privilege, allPrivilegesArray, anyPrivilegeArray);
-			} catch (Exception e) {
-	            e.printStackTrace();
-            } 
+				hasPrivilege = hasPrivileges(authenticatedUser.getId().toString(), privilege, allPrivilegesArray,
+				    anyPrivilegeArray);
+			}
+			catch (Exception e) {
+				e.printStackTrace();
+			}
 			
-		}else{
+		} else {
 			hasPrivilege = hasPrivileges(userContext, privilege, allPrivilegesArray, anyPrivilegeArray);
 		}
-		
 		
 		if (!hasPrivilege) {
 			errorOccurred = true;
@@ -282,60 +283,59 @@ public class RequireTag extends TagSupport {
 		return true;
 	}
 	
-	private boolean hasPrivileges(String subjectId, String privilege, String[] allPrivilegesArray,
-			String[] anyPrivilegeArray) throws NullPointerException, PEPAgentException, XMLStreamException {
-		
+	private boolean hasPrivileges(String subjectId, String privilege, String[] allPrivilegesArray, String[] anyPrivilegeArray)
+	        throws NullPointerException, PEPAgentException, XMLStreamException {
 		
 		List<String> arrayList = new ArrayList<String>();
 		for (String s : allPrivilegesArray) {
 			arrayList.add(s);
-        }
+		}
 		
 		List<String> arrayList2 = new ArrayList<String>();
 		for (String s : anyPrivilegeArray) {
 			arrayList2.add(s);
 		}
 		
-		  boolean containsAll = true;
-          
-          if(!arrayList.isEmpty()){
-          	List<String> decisonResultsAll = pep.getDecisonResults(subjectId, arrayList, "openmrs.com",null);
-          	for (String string : decisonResultsAll) {
-                  if(!string.equals(XACMLCommunication.RESULT_PERMIT)){
-                  	containsAll = false;
-                  	break;
-                  }
-              }
-          	if(!containsAll){
-          		return false; 
-          	}
-          }
-  
-          boolean containsAny = false;
-          if(containsAll && !arrayList.isEmpty()){
-          	List<String> decisonResultsAny = pep.getDecisonResults(subjectId, arrayList2, "openmrs.com",null);
-          	
-          	for (String string : decisonResultsAny) {
-                  if(string.equals(XACMLCommunication.RESULT_PERMIT)){
-                  	containsAny= true;
-                  	break;
-                  }
-              }
-          	if(!containsAny){
-          		return false;
-          	}
-          }
-          
-          arrayList2.clear();
-          arrayList2.add(privilege);
-          List<String> decisonResults = pep.getDecisonResults(subjectId, arrayList2, "openmrs.com",null);
-          
-          if(!decisonResults.get(0).equals(XACMLCommunication.RESULT_PERMIT)){
-          	addMissingPrivilege(privilege);
-          	return false;
-          }
-          
-          return true;
+		boolean containsAll = true;
+		
+		if (!arrayList.isEmpty()) {
+			List<String> decisonResultsAll = pep.getDecisonResults(subjectId, arrayList, "openmrs.com", null);
+			for (String string : decisonResultsAll) {
+				if (!string.equals(XACMLCommunication.RESULT_PERMIT)) {
+					containsAll = false;
+					break;
+				}
+			}
+			if (!containsAll) {
+				return false;
+			}
+		}
+		
+		boolean containsAny = false;
+		if (containsAll && !arrayList.isEmpty()) {
+			List<String> decisonResultsAny = pep.getDecisonResults(subjectId, arrayList2, "openmrs.com", null);
+			
+			for (String string : decisonResultsAny) {
+				if (string.equals(XACMLCommunication.RESULT_PERMIT)) {
+					containsAny = true;
+					break;
+				}
+			}
+			if (!containsAny) {
+				return false;
+			}
+		}
+		
+		arrayList2.clear();
+		arrayList2.add(privilege);
+		List<String> decisonResults = pep.getDecisonResults(subjectId, arrayList2, "openmrs.com", null);
+		
+		if (!decisonResults.get(0).equals(XACMLCommunication.RESULT_PERMIT)) {
+			addMissingPrivilege(privilege);
+			return false;
+		}
+		
+		return true;
 	}
 	
 	/**

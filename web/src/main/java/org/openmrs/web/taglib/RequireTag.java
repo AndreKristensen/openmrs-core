@@ -71,13 +71,8 @@ public class RequireTag extends TagSupport {
 	private XACMLCommunication pep = null;
 	
 	public RequireTag() {
-		try {
 			pep = new XACMLCommunication("localhost", "9443", "admin", "admin",
 			        "C:\\utvikling\\wso2is-5.0.0\\repository\\resources\\security\\client-truststore.jks", "wso2carbon");
-		}
-		catch (PEPAgentException e) {
-			e.printStackTrace();
-		}
 	}
 	
 	//these can only be multiple if the anyPrivilege attribute has more than one value
@@ -299,7 +294,7 @@ public class RequireTag extends TagSupport {
 		boolean containsAll = true;
 		
 		if (!arrayList.isEmpty()) {
-			List<String> decisonResultsAll = pep.getDecisonResults(subjectId, arrayList, "openmrs.com", null);
+			List<String> decisonResultsAll = pep.getDecisonResults(subjectId, arrayList, "openmrs.com", "view");
 			for (String string : decisonResultsAll) {
 				if (!string.equals(XACMLCommunication.RESULT_PERMIT)) {
 					containsAll = false;
@@ -313,7 +308,7 @@ public class RequireTag extends TagSupport {
 		
 		boolean containsAny = false;
 		if (containsAll && !arrayList.isEmpty()) {
-			List<String> decisonResultsAny = pep.getDecisonResults(subjectId, arrayList2, "openmrs.com", null);
+			List<String> decisonResultsAny = pep.getDecisonResults(subjectId, arrayList2, "openmrs.com", "view");
 			
 			for (String string : decisonResultsAny) {
 				if (string.equals(XACMLCommunication.RESULT_PERMIT)) {
@@ -328,7 +323,7 @@ public class RequireTag extends TagSupport {
 		
 		arrayList2.clear();
 		arrayList2.add(privilege);
-		List<String> decisonResults = pep.getDecisonResults(subjectId, arrayList2, "openmrs.com", null);
+		List<String> decisonResults = pep.getDecisonResults(subjectId, arrayList2, "openmrs.com", "view");
 		
 		if (!decisonResults.get(0).equals(XACMLCommunication.RESULT_PERMIT)) {
 			addMissingPrivilege(privilege);

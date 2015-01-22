@@ -20,6 +20,8 @@ import java.util.List;
 import javax.servlet.jsp.tagext.TagSupport;
 import javax.xml.stream.XMLStreamException;
 
+import no.ask.xacml.util.XACMLCommunication;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openmrs.User;
@@ -27,37 +29,29 @@ import org.openmrs.api.context.Context;
 import org.openmrs.api.context.UserContext;
 import org.xacmlinfo.xacml.pep.agent.PEPAgentException;
 
-import no.ask.xacml.util.XACMLCommunication;
-
 public class PrivilegeTag extends TagSupport {
-	
+
 	public static final long serialVersionUID = 11233L;
-	
+
 	private final Log log = LogFactory.getLog(getClass());
-	
+
 	private String privilege;
-	
+
 	private String inverse;
-	
+
 	private XACMLCommunication pep = null;
-	
+
 	public PrivilegeTag() {
-		try {
-			pep = new XACMLCommunication("localhost", "9443", "admin", "admin",
-			        "C:\\utvikling\\wso2is-5.0.0\\repository\\resources\\security\\client-truststore.jks", "wso2carbon");
-		}
-		catch (PEPAgentException e) {
-			e.printStackTrace();
-		}
+		pep = new XACMLCommunication("localhost", "9443", "admin", "admin", "C:\\utvikling\\wso2is-5.0.0\\repository\\resources\\security\\client-truststore.jks", "wso2carbon");
 	}
-	
+
 	public int doStartTag() {
-		
-		//		User user = Context.getAuthenticatedUser();
+
+		// User user = Context.getAuthenticatedUser();
 		UserContext userContext = Context.getUserContext();
-		
+
 		log.debug("Checking user " + userContext.getAuthenticatedUser() + " for privs " + privilege);
-		
+
 		boolean hasPrivilege = false;
 		Collection<String> privileges = new ArrayList<String>();
 		if (privilege.contains(",")) {
@@ -73,53 +67,51 @@ public class PrivilegeTag extends TagSupport {
 			privileges.add(privilege);
 			hasPrivilege = userContext.hasPrivilege(privilege);
 		}
-		
+
 		User authenticatedUser = userContext.getAuthenticatedUser();
-		
+
 		try {
 			if (authenticatedUser != null) {
 				// allow inversing
-				
+
 				System.out.println(privileges);
-				List<String> decisonResults = pep.getDecisonResults(authenticatedUser.getId().toString(), privileges,
-				    "openmrs.com", null);
-				System.out.println(decisonResults.toString());
-				
-				boolean isInverted = false;
-				if (inverse != null) {
-					isInverted = "true".equals(inverse.toLowerCase());
+				List<String> decisonResults;
+				try {
+					decisonResults = pep.getDecisonResults(authenticatedUser.getId().toString(), privileges, "openmrs.com", "view");
+
+					System.out.println(decisonResults.toString());
+
+					boolean isInverted = false;
+					if (inverse != null) {
+						isInverted = "true".equals(inverse.toLowerCase());
+					}
+
+					boolean b = decisonResults.get(0).equals(XACMLCommunication.RESULT_PERMIT) && !isInverted;
+					boolean c = decisonResults.get(0).equals(XACMLCommunication.RESULT_DENY) && isInverted;
+					if (b || c) {
+						pageContext.setAttribute("authenticatedUser", userContext.getAuthenticatedUser());
+						return EVAL_BODY_INCLUDE;
+					} else {
+						return SKIP_BODY;
+					}
+				} catch (PEPAgentException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (XMLStreamException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
 				}
-				
-				boolean b = decisonResults.get(0).equals(XACMLCommunication.RESULT_PERMIT) && !isInverted;
-				boolean c = decisonResults.get(0).equals(XACMLCommunication.RESULT_DENY) && isInverted;
-				if (b || c) {
-					pageContext.setAttribute("authenticatedUser", userContext.getAuthenticatedUser());
-					return EVAL_BODY_INCLUDE;
-				} else {
-					return SKIP_BODY;
-				}
-				
 			}
-		}
-		catch (NullPointerException e) {
-			// TODO Auto-generated catch block
+		} catch (NullPointerException e) {
 			e.printStackTrace();
 		}
-		catch (PEPAgentException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		catch (XMLStreamException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
+
 		// allow inversing
 		boolean isInverted = false;
 		if (inverse != null) {
 			isInverted = "true".equals(inverse.toLowerCase());
 		}
-		
+
 		if ((hasPrivilege && !isInverted) || (!hasPrivilege && isInverted)) {
 			pageContext.setAttribute("authenticatedUser", userContext.getAuthenticatedUser());
 			return EVAL_BODY_INCLUDE;
@@ -127,30 +119,32 @@ public class PrivilegeTag extends TagSupport {
 			return SKIP_BODY;
 		}
 	}
-	
+
 	/**
 	 * @return Returns the privilege.
 	 */
 	public String getPrivilege() {
 		return privilege;
 	}
-	
+
 	/**
-	 * @param converse The privilege to set.
+	 * @param converse
+	 *            The privilege to set.
 	 */
 	public void setPrivilege(String privilege) {
 		this.privilege = privilege;
 	}
-	
+
 	/**
 	 * @return Returns the inverse.
 	 */
 	public String getInverse() {
 		return inverse;
 	}
-	
+
 	/**
-	 * @param inverse The inverse to set.
+	 * @param inverse
+	 *            The inverse to set.
 	 */
 	public void setInverse(String inverse) {
 		this.inverse = inverse;

@@ -27,7 +27,6 @@ import org.openmrs.annotation.AuthorizedAnnotationAttributes;
 import org.openmrs.api.APIAuthenticationException;
 import org.openmrs.api.context.Context;
 import org.springframework.aop.MethodBeforeAdvice;
-import org.xacmlinfo.xacml.pep.agent.PEPAgentException;
 
 /**
  * This class provides the authorization AOP advice performed before every
@@ -43,13 +42,8 @@ public class AuthorizationAdvice implements MethodBeforeAdvice {
 	private XACMLCommunication pep = null;
 	
 	public AuthorizationAdvice() {
-		try {
 			pep = new XACMLCommunication("localhost", "9443", "admin", "admin",
 			        "C:\\utvikling\\wso2is-5.0.0\\repository\\resources\\security\\client-truststore.jks", "wso2carbon");
-		}
-		catch (PEPAgentException e) {
-			e.printStackTrace();
-		}
 	}
 	
 	/**
@@ -74,19 +68,49 @@ public class AuthorizationAdvice implements MethodBeforeAdvice {
 				log.debug("has roles " + user.getAllRoles());
 			}
 		}
-		
+		if("getPatient".equals(method.getName()))
+//		System.out.println(args);
+		if (args != null || args.length != 0) {
+			System.out.println(args.length);
+		  for (int i = 0; i < args.length; i++) {
+		      Object argument = args[i];
+		      if (argument != null) {
+		    	  
+		    	  if(argument instanceof String){
+		    		  String argument2 = (String)argument;
+		    		  if(!argument2.matches("^patient[\\.A-Za-z]*")){
+		    			  
+	                    System.out.println("arg string-----" +argument2);
+		    		  }
+                    
+		    	  }else 
+		    		  
+		    		  if(argument instanceof Integer){
+		    		  System.out.println("arg int -----" +(Integer)argument);
+
+		    	  }
+		        
+		      }
+		    }
+		}
+		  
 		AuthorizedAnnotationAttributes attributes = new AuthorizedAnnotationAttributes();
+		
 		Collection<String> privileges = attributes.getAttributes(method);
 		boolean requireAll = attributes.getRequireAll(method);
-		
 		// Only execute if the "secure" method has authorization attributes
 		// Iterate through required privileges and return only if the user has
 		// one of them
+		
+		
 		if (!privileges.isEmpty()) {
 			if (user != null) {
-				List<String> results = pep.getDecisonResults(user.getId().toString(), privileges, "openmrs.com", null);
-				log.info(results.toString());
+//				System.out.println( method.getName());
+//				System.out.println(privileges.toString());
+				List<String> results = pep.getDecisonResults(user.getId().toString(), privileges, "openmrs.com", method.getName());
 				
+//				log.info(results.toString());
+//				System.out.println(results);
 				if (requireAll && (privileges.size() == 1) && results.contains(XACMLCommunication.RESULT_PERMIT)) {
 					return;
 				} else if (!requireAll && results.contains(XACMLCommunication.RESULT_PERMIT)) {

@@ -77,7 +77,7 @@ public class PrivilegeTag extends TagSupport {
 				System.out.println(privileges);
 				List<String> decisonResults;
 				try {
-					decisonResults = pep.getDecisonResults(authenticatedUser.getId().toString(), privileges, "openmrs.com", "view");
+					decisonResults = pep.getDecisionResults(authenticatedUser.getId().toString(), privileges, "openmrs.com", "view");
 
 					System.out.println(decisonResults.toString());
 

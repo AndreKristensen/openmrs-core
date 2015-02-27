@@ -39,10 +39,10 @@ public class AuthorizationAdvice implements MethodBeforeAdvice {
 	 */
 	protected final Log log = LogFactory.getLog(AuthorizationAdvice.class);
 	
-	private XACMLCommunication pep = null;
+	private XACMLCommunication pdp = null;
 	
 	public AuthorizationAdvice() {
-			pep = new XACMLCommunication("localhost", "9443", "admin", "admin",
+			pdp = new XACMLCommunication("localhost", "9443", "admin", "admin",
 			        "C:\\utvikling\\wso2is-5.0.0\\repository\\resources\\security\\client-truststore.jks", "wso2carbon");
 	}
 	
@@ -68,32 +68,7 @@ public class AuthorizationAdvice implements MethodBeforeAdvice {
 				log.debug("has roles " + user.getAllRoles());
 			}
 		}
-		if("getPatient".equals(method.getName()))
-//		System.out.println(args);
-		if (args != null || args.length != 0) {
-			System.out.println(args.length);
-		  for (int i = 0; i < args.length; i++) {
-		      Object argument = args[i];
-		      if (argument != null) {
-		    	  
-		    	  if(argument instanceof String){
-		    		  String argument2 = (String)argument;
-		    		  if(!argument2.matches("^patient[\\.A-Za-z]*")){
-		    			  
-	                    System.out.println("arg string-----" +argument2);
-		    		  }
-                    
-		    	  }else 
-		    		  
-		    		  if(argument instanceof Integer){
-		    		  System.out.println("arg int -----" +(Integer)argument);
-
-		    	  }
-		        
-		      }
-		    }
-		}
-		  
+				  
 		AuthorizedAnnotationAttributes attributes = new AuthorizedAnnotationAttributes();
 		
 		Collection<String> privileges = attributes.getAttributes(method);
@@ -105,9 +80,9 @@ public class AuthorizationAdvice implements MethodBeforeAdvice {
 		
 		if (!privileges.isEmpty()) {
 			if (user != null) {
-//				System.out.println( method.getName());
+				System.out.println( method.getName());
 //				System.out.println(privileges.toString());
-				List<String> results = pep.getDecisonResults(user.getId().toString(), privileges, "openmrs.com", method.getName());
+				List<String> results = pdp.getDecisionResults(user.getId().toString(), privileges, "openmrs.com", method.getName());
 				
 //				log.info(results.toString());
 //				System.out.println(results);
